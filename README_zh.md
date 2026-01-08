@@ -59,7 +59,7 @@ Assistant Agent 是一个功能完整的智能助手，具备以下核心能力�
 ### 项目结构
 
 ```
-assistant-agent/
+AssistantAgent/
 ├── assistant-agent-common          # 通用工具、枚举、常量
 ├── assistant-agent-core            # 核心引擎：GraalVM 执行器、工具注册表
 ├── assistant-agent-extensions      # 扩展模块：
@@ -87,8 +87,8 @@ assistant-agent/
 ### 1. 克隆并构建
 
 ```bash
-git clone https://github.com/alibaba/assistant-agent.git
-cd assistant-agent
+git clone https://github.com/spring-ai-alibaba/AssistantAgent.git
+cd AssistantAgent
 mvn clean install -DskipTests
 ```
 

@@ -34,8 +34,8 @@ Please be respectful and constructive in all interactions. We are committed to p
 
 ```bash
 # Clone the repository
-git clone https://github.com/alibaba/assistant-agent.git
-cd assistant-agent
+git clone https://github.com/spring-ai-alibaba/AssistantAgent.git
+cd AssistantAgent
 
 # Build the project
 mvn clean install -DskipTests
@@ -97,8 +97,8 @@ mvn spring-boot:run
 
 ```bash
 # Fork on GitHub, then:
-git clone https://github.com/YOUR_USERNAME/assistant-agent.git
-cd assistant-agent
+git clone https://github.com/YOUR_USERNAME/AssistantAgent.git
+cd AssistantAgent
 git checkout -b feature/your-feature-name
 
 # Make changes...

@@ -61,7 +61,7 @@ Below is an end-to-end flow example of how Assistant Agent processes a complete 
 ### Project Structure
 
 ```
-assistant-agent/
+AssistantAgent/
 ├── assistant-agent-common          # Common tools, enums, constants
 ├── assistant-agent-core            # Core engine: GraalVM executor, tool registry
 ├── assistant-agent-extensions      # Extension modules:
@@ -89,8 +89,8 @@ assistant-agent/
 ### 1. Clone and Build
 
 ```bash
-git clone https://github.com/alibaba/assistant-agent.git
-cd assistant-agent
+git clone https://github.com/spring-ai-alibaba/AssistantAgent.git
+cd AssistantAgent
 mvn clean install -DskipTests
 ```
 
@@ -236,12 +236,12 @@ public class MyKnowledgeSearchProvider implements SearchProvider {
 │  └─────────────────────────────────────────────────────────┘     │
 │                       │                                          │
 │                       ▼                                          │
-│            ┌────────────────────┐                                │
+│            ┌─────────────────────┐                               │
 │            │ Integrate evaluation│                               │
 │            │ results from        │                               │
 │            │ different dimensions│                               │
 │            │ → Pass to modules   │                               │
-│            └────────────────────┘                                │
+│            └─────────────────────┘                               │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -456,7 +456,7 @@ public class MyKnowledgeSearchProvider implements SearchProvider {
 │   │  (self-schedule)│     │                 │     │  Send notify    │   │
 │   └─────────────────┘     └─────────────────┘     └─────────────────┘   │
 │                                                                         │
-│  [Delayed Trigge]                                                       │
+│  [Delayed Trigger]                                                      │
 │                                                                         │
 │   User: "Remind me about the meeting in 30 minutes"                     │
 │            │                                                            │
