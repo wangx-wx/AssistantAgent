@@ -95,7 +95,7 @@ public class ReactExperienceAgentHook extends AgentHook implements Prioritized {
 
             // 查询React经验
             ExperienceQuery query = new ExperienceQuery(ExperienceType.REACT);
-            query.setLimit(Math.min(properties.getMaxItemsPerQuery(), 3));
+            query.setLimit(Math.min(properties.getMaxItemsPerQuery(), 30));
             // 关键修复：设置查询文本，用于向量搜索
             if (StringUtils.hasText(userInput)) {
                 query.setText(userInput);
