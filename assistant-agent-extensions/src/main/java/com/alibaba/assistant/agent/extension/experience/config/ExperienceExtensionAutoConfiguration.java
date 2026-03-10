@@ -4,6 +4,7 @@ import com.alibaba.assistant.agent.extension.experience.hook.CommonSenseExperien
 import com.alibaba.assistant.agent.extension.experience.hook.FastIntentReactHook;
 import com.alibaba.assistant.agent.extension.experience.hook.ReactExperienceAgentHook;
 import com.alibaba.assistant.agent.extension.experience.tool.CommonSenseInjectionTool;
+import com.alibaba.assistant.agent.extension.experience.tool.ReactStrategyInjectionTool;
 import com.alibaba.assistant.agent.extension.experience.fastintent.FastIntentService;
 import com.alibaba.assistant.agent.extension.experience.internal.InMemoryExperienceProvider;
 import com.alibaba.assistant.agent.extension.experience.internal.InMemoryExperienceRepository;
@@ -128,5 +129,24 @@ public class ExperienceExtensionAutoConfiguration {
     public CommonSenseInjectionTool commonSenseInjectionTool() {
         log.info("ExperienceExtensionAutoConfiguration#commonSenseInjectionTool - reason=creating common sense injection tool bean");
         return new CommonSenseInjectionTool();
+    }
+
+    /**
+     * 配置React策略经验注入假工具
+     *
+     * <p>这个工具与 ReactExperienceAgentHook 配套使用。
+     * Hook 会注入 AssistantMessage + ToolResponseMessage 配对来模拟工具调用，
+     * 注册这个工具可以让 ReactAgent 的路由逻辑正确识别和处理。
+     *
+     * <p>如果 LLM 错误地尝试调用这个工具，会返回错误提示。
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "spring.ai.alibaba.codeact.extension.experience",
+                          name = "react-experience-enabled",
+                          havingValue = "true",
+                          matchIfMissing = true)
+    public ReactStrategyInjectionTool reactStrategyInjectionTool() {
+        log.info("ExperienceExtensionAutoConfiguration#reactStrategyInjectionTool - reason=creating react strategy injection tool bean");
+        return new ReactStrategyInjectionTool();
     }
 }
