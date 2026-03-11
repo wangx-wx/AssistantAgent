@@ -82,7 +82,12 @@ public class ConditionalExecutionConfig {
 		/**
 		 * Actual value must be Boolean.FALSE
 		 */
-		IS_FALSE
+		IS_FALSE,
+
+		/**
+		 * Actual value must be contained in expectedValue (which should be a Collection or Array)
+		 */
+		IN
 	}
 
 	// Constructors
@@ -144,9 +149,33 @@ public class ConditionalExecutionConfig {
 				return Boolean.TRUE.equals(actualValue);
 			case IS_FALSE:
 				return Boolean.FALSE.equals(actualValue);
+			case IN:
+				return matchesIn(actualValue);
 			default:
 				return true;
 		}
+	}
+
+	/**
+	 * Check if actualValue is contained in expectedValue collection
+	 */
+	private boolean matchesIn(Object actualValue) {
+		if (expectedValue == null || actualValue == null) {
+			return false;
+		}
+		if (expectedValue instanceof java.util.Collection) {
+			return ((java.util.Collection<?>) expectedValue).contains(actualValue);
+		}
+		if (expectedValue.getClass().isArray()) {
+			int length = java.lang.reflect.Array.getLength(expectedValue);
+			for (int i = 0; i < length; i++) {
+				if (Objects.equals(java.lang.reflect.Array.get(expectedValue, i), actualValue)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return Objects.equals(expectedValue, actualValue);
 	}
 
 	/**
@@ -164,6 +193,8 @@ public class ConditionalExecutionConfig {
 				return String.format("%s is true", dependsOnCriterion);
 			case IS_FALSE:
 				return String.format("%s is false", dependsOnCriterion);
+			case IN:
+				return String.format("%s in %s", dependsOnCriterion, expectedValue);
 			default:
 				return "unknown condition";
 		}
