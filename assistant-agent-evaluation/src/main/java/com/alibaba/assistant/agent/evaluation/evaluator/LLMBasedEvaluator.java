@@ -76,7 +76,7 @@ public class LLMBasedEvaluator implements Evaluator {
 			result.setRawPrompt(promptText);
 
 			logger.debug("Evaluating criterion {} with LLM, prompt: {}, chatModel: {} ({})",
-				executionContext.getCriterion().getName(), promptText, chatModel.getClass().getSimpleName(), chatModel);
+				executionContext.getCriterion().getName(), promptText.replace("\n","\\n"), chatModel.getClass().getSimpleName(), chatModel);
 
 			// Call LLM with optional ChatOptions
 			Prompt prompt = chatOptions != null ? new Prompt(promptText, chatOptions) : new Prompt(promptText);
