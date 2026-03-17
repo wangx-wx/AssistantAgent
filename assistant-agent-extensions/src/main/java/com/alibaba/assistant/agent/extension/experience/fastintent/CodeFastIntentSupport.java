@@ -74,17 +74,17 @@ public class CodeFastIntentSupport {
             FastIntentContext ctx = new FastIntentContext(input, messages, md, state, toolRequest);
 
             ExperienceQueryContext queryContext = buildQueryContext(state, config, language, input);
-            // 使用 write_code 的 requirement 参数作为搜索文本，提升向量搜索召回率
-            String requirement = toolRequest != null ? (String) toolRequest.get("requirement") : null;
-            if (StringUtils.hasText(requirement)) {
-                queryContext.setUserQuery(requirement);
+            // 使用 write_code 的 description 参数作为搜索文本，提升向量搜索召回率
+            String description = toolRequest != null ? (String) toolRequest.get("description") : null;
+            if (StringUtils.hasText(description)) {
+                queryContext.setUserQuery(description);
             }
             ExperienceQuery query = new ExperienceQuery(ExperienceType.CODE);
-            query.setText(requirement);
+            query.setText(description);
             query.setLimit(Math.max(40, properties.getMaxItemsPerQuery()));
 
             log.info("CodeFastIntentSupport#tryHit - reason=querying code experiences, text={}, limit={}",
-                    requirement != null ? (requirement.length() > 50 ? requirement.substring(0, 50) + "..." : requirement) : "null",
+                    description != null ? (description.length() > 50 ? description.substring(0, 50) + "..." : description) : "null",
                     query.getLimit());
 
             List<Experience> candidates = experienceProvider.query(query, queryContext);
@@ -150,9 +150,9 @@ public class CodeFastIntentSupport {
         return fb != null ? fb : FastIntentConfig.FastIntentFallback.REFERENCE_ONLY;
     }
 
-    public static Map<String, Object> toolReqOf(String requirement, String functionName, List<String> parameters) {
+    public static Map<String, Object> toolReqOf(String description, String functionName, List<String> parameters) {
         Map<String, Object> toolReq = new HashMap<>();
-        toolReq.put("requirement", requirement);
+        toolReq.put("description", description);
         toolReq.put("functionName", functionName);
         toolReq.put("parameters", parameters != null ? parameters : List.of());
         return toolReq;

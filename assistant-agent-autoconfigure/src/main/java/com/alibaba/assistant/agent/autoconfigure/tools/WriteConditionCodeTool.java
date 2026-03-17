@@ -19,14 +19,11 @@ import com.alibaba.assistant.agent.core.context.CodeContext;
 import com.alibaba.assistant.agent.core.context.SessionCodeManager;
 import com.alibaba.assistant.agent.core.executor.RuntimeEnvironmentManager;
 import com.alibaba.assistant.agent.core.model.GeneratedCode;
-import com.alibaba.assistant.agent.autoconfigure.subagent.BaseAgentTaskTool;
 import com.alibaba.assistant.agent.extension.experience.fastintent.CodeFastIntentSupport;
 import com.alibaba.assistant.agent.extension.experience.model.Experience;
 import com.alibaba.assistant.agent.extension.experience.model.FastIntentConfig;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.agent.tools.ToolContextConstants;
-import com.alibaba.cloud.ai.graph.store.Store;
-import com.alibaba.cloud.ai.graph.store.StoreItem;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.slf4j.Logger;
@@ -36,19 +33,25 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 /**
- * WriteConditionCodeTool - 条件判断代码生成工具（委托给 BaseAgentTaskTool）
+ * WriteConditionCodeTool - 条件判断代码注册工具
  *
  * <p>职责：
  * <ul>
- * <li>参数适配：将 Request 转换为 TaskRequest，强调返回 boolean</li>
- * <li>委托调用：通过 BaseAgentTaskTool 调用 condition-code-generator 子 Agent</li>
- * <li>额外处理：注册到 CodeContext 和持久化到 Store</li>
+ * <li>接收 LLM 在 React 阶段直接生成的条件判断函数代码</li>
+ * <li>验证代码格式（函数名、参数、返回值类型）</li>
+ * <li>将代码注入到 CodeContext，供触发器使用</li>
+ * </ul>
+ *
+ * <p>说明：
+ * <ul>
+ * <li>新增 code 参数，直接接收完整的 Python 条件函数代码</li>
+ * <li>条件函数必须返回 boolean 值（True/False）</li>
  * </ul>
  *
  * @author Assistant Agent Team
@@ -58,66 +61,66 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 
 	private static final Logger logger = LoggerFactory.getLogger(WriteConditionCodeTool.class);
 
-	private final BaseAgentTaskTool taskTool;
 	private final CodeContext codeContext;
 	private final RuntimeEnvironmentManager environmentManager;
 
-	// Experience / fast-intent (optional)
 	private final CodeFastIntentSupport codeFastIntentSupport;
 
-	public WriteConditionCodeTool(BaseAgentTaskTool taskTool,
-								  CodeContext codeContext,
+	public WriteConditionCodeTool(CodeContext codeContext,
 								  RuntimeEnvironmentManager environmentManager,
 								  CodeFastIntentSupport codeFastIntentSupport) {
-		this.taskTool = taskTool;
 		this.codeContext = codeContext;
 		this.environmentManager = environmentManager;
 		this.codeFastIntentSupport = codeFastIntentSupport;
 	}
 
-	// Backward compatibility constructor
-	public WriteConditionCodeTool(BaseAgentTaskTool taskTool, CodeContext codeContext, RuntimeEnvironmentManager environmentManager) {
-		this(taskTool, codeContext, environmentManager, (CodeFastIntentSupport) null);
+	public WriteConditionCodeTool(CodeContext codeContext, RuntimeEnvironmentManager environmentManager) {
+		this(codeContext, environmentManager, null);
 	}
 
 	@Override
 	public String apply(Request request, ToolContext toolContext) {
-		logger.info("WriteConditionCodeTool#apply 调用条件判断代码生成子Agent: functionName={}", request.functionName);
+		logger.info("WriteConditionCodeTool#apply 注册条件判断代码: functionName={}", request.functionName);
 
 		try {
-			// 0. FastPath Intent (CODE): hit => skip condition-code-generator
+			// 0. FastPath Intent (CODE): hit => skip validation
 			String fastIntentResult = tryFastIntent(request, toolContext);
 			if (fastIntentResult != null) {
 				return fastIntentResult;
 			}
 
-			// 1. 参数适配：构建任务描述，强调返回 boolean
-			String taskDescription = buildTaskDescription(request);
-			BaseAgentTaskTool.TaskRequest taskRequest = new BaseAgentTaskTool.TaskRequest(
-					taskDescription,
-					"condition-code-generator"
-			);
-
-			// 2. 委托给 TaskTool 调用子 Agent
-			String generatedCode = taskTool.apply(taskRequest, toolContext);
-
-			// 3. 检查错误
-			if (generatedCode.startsWith("Error:")) {
-				return generatedCode;
+			// 1. 验证必填参数
+			if (request.functionName == null || request.functionName.trim().isEmpty()) {
+				return "Error: functionName is required";
+			}
+			if (request.code == null || request.code.trim().isEmpty()) {
+				return "Error: code is required. Please provide the complete Python condition function code.";
 			}
 
-			// 4. 额外处理：注册到 CodeContext
-			registerCode(request, generatedCode, toolContext);
+			// 2. 清理代码
+			String cleanedCode = cleanUpCode(request.code);
 
-			logger.info("WriteConditionCodeTool#apply 条件判断代码生成成功: functionName={}", request.functionName);
-			return "Condition code generated successfully: " + request.functionName;
+			// 3. 验证代码格式
+			String validationError = validateCode(request.functionName, request.parameters, cleanedCode);
+			if (validationError != null) {
+				logger.warn("WriteConditionCodeTool#apply 代码验证失败: {}", validationError);
+				return "Error: " + validationError;
+			}
+
+			// 4. 注册代码到 CodeContext
+			registerCode(request, cleanedCode, toolContext);
+
+			logger.info("WriteConditionCodeTool#apply 条件判断代码注册成功: functionName={}", request.functionName);
+			return String.format("条件函数 %s 已成功注册，可用于触发器订阅。\n```python\n%s\n```",
+					request.functionName, cleanedCode);
 
 		} catch (Exception e) {
-			logger.error("WriteConditionCodeTool#apply 条件判断代码生成失败", e);
+			logger.error("WriteConditionCodeTool#apply 条件判断代码注册失败", e);
 			return "Error: " + e.getMessage();
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private String tryFastIntent(Request request, ToolContext toolContext) {
 		try {
 			if (codeFastIntentSupport == null || toolContext == null) {
@@ -125,9 +128,8 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 			}
 
 			String language = (codeContext != null && codeContext.getLanguage() != null) ? codeContext.getLanguage().name() : null;
-			var toolReq = CodeFastIntentSupport.toolReqOf(request.requirement, request.functionName, request.parameters);
-
-			var hitOpt = codeFastIntentSupport.tryHit(toolContext, toolReq, language);
+			Map<String, Object> toolReq = CodeFastIntentSupport.toolReqOf(request.description, request.functionName, request.parameters);
+			Optional<CodeFastIntentSupport.Hit> hitOpt = codeFastIntentSupport.tryHit(toolContext, toolReq, language);
 			if (hitOpt.isEmpty()) {
 				return null;
 			}
@@ -149,7 +151,7 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 				if (fb == FastIntentConfig.FastIntentFallback.FAIL_FAST) {
 					return "Error: FastIntent(Code) register failed: " + err;
 				}
-				return null; // fallback to normal LLM path
+				return null;
 			}
 
 			logger.info("WriteConditionCodeTool#tryFastIntent - reason=fast-intent HIT (skip codegen), expId={}",
@@ -163,23 +165,39 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 	}
 
 	/**
-	 * 构建任务描述（强调返回 boolean）
+	 * 清理代码（移除 markdown 代码块标记）
 	 */
-	private String buildTaskDescription(Request request) {
-		StringBuilder desc = new StringBuilder();
-		desc.append("生成条件判断函数代码（必须返回 boolean 值）\n");
-		desc.append("需求: ").append(request.requirement).append("\n");
-		desc.append("函数名: ").append(request.functionName).append("\n");
-
-		if (request.parameters != null && !request.parameters.isEmpty()) {
-			desc.append("参数列表: ").append(String.join(", ", request.parameters)).append("\n");
-		} else {
-			desc.append("参数: 使用 **kwargs 接收灵活参数\n");
+	private String cleanUpCode(String code) {
+		if (code == null) {
+			return null;
 		}
+		String cleaned = code.trim();
+		if (cleaned.startsWith("```python")) {
+			cleaned = cleaned.substring(9);
+		} else if (cleaned.startsWith("```py")) {
+			cleaned = cleaned.substring(5);
+		} else if (cleaned.startsWith("```")) {
+			cleaned = cleaned.substring(3);
+		}
+		if (cleaned.endsWith("```")) {
+			cleaned = cleaned.substring(0, cleaned.length() - 3);
+		}
+		return cleaned.trim();
+	}
 
-		desc.append("\n重要: 函数必须返回 True 或 False");
-
-		return desc.toString();
+	/**
+	 * 验证代码格式
+	 */
+	private String validateCode(String expectedFunctionName, List<String> expectedParameters, String code) {
+		String actualFunctionName = environmentManager.extractFunctionName(code);
+		if (actualFunctionName == null) {
+			return "Code does not contain a valid function definition. Expected: def " + expectedFunctionName + "(...) -> bool";
+		}
+		if (!actualFunctionName.equals(expectedFunctionName)) {
+			return String.format("Function name mismatch. Expected: %s, Actual: %s",
+					expectedFunctionName, actualFunctionName);
+		}
+		return null;
 	}
 
 	/**
@@ -188,20 +206,13 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 	 * <p>代码会被保存到OverAllState的session级别存储中，而不是全局共享的CodeContext，
 	 * 这样不同session的代码不会相互干扰。
 	 */
-	private void registerCode(Request request, String generatedCode, ToolContext toolContext) {
-		// 验证函数名
-		String actualFunctionName = environmentManager.extractFunctionName(generatedCode);
-		if (actualFunctionName != null && !actualFunctionName.equals(request.functionName)) {
-			logger.warn("WriteConditionCodeTool#registerCode - reason=生成的函数名不匹配, expected={}, actual={}",
-					request.functionName, actualFunctionName);
-		}
-
+	private void registerCode(Request request, String conditionCode, ToolContext toolContext) {
 		// 创建 GeneratedCode 对象
 		GeneratedCode code = new GeneratedCode(
 				request.functionName,
 				codeContext.getLanguage(),
-				generatedCode,
-				request.requirement
+				conditionCode,
+				request.description != null ? request.description : ""
 		);
 		code.setParameters(request.parameters != null ? new ArrayList<>(request.parameters) : new ArrayList<>());
 
@@ -219,9 +230,6 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 			logger.warn("WriteConditionCodeTool#registerCode - reason=无法获取state降级到全局CodeContext, functionName={}",
 					request.functionName);
 		}
-
-		// 持久化到 Store（用于跨session的长期存储，默认暂时为空不做任何操作）
-		// saveToStore(toolContext, code);
 	}
 
 	/**
@@ -239,73 +247,81 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 	}
 
 	/**
-	 * 保存到 Store
+	 * write_condition_code 工具的详细描述
+	 * 
+	 * <p>包含条件函数编写规范和指导，帮助 LLM 生成正确的条件判断代码。
 	 */
-	private void saveToStore(ToolContext toolContext, GeneratedCode code) {
-		try {
-			OverAllState state = (OverAllState) toolContext.getContext()
-					.get(ToolContextConstants.AGENT_STATE_CONTEXT_KEY);
-			if (state == null) {
-				return;
-			}
-
-			Store store = state.getStore();
-			if (store == null) {
-				logger.warn("WriteConditionCodeTool#saveToStore Store未初始化");
-				return;
-			}
-
-			List<String> namespace = List.of("codeact", "condition_code_generation");
-			Map<String, Object> data = new HashMap<>();
-			data.put("functionName", code.getFunctionName());
-			data.put("language", code.getLanguage().name());
-			data.put("code", code.getCode());
-			data.put("parameters", code.getParameters());
-			data.put("requirement", code.getOriginalQuery());
-			data.put("isCondition", true);
-
-			StoreItem item = StoreItem.of(namespace, code.getFunctionName(), data);
-			store.putItem(item);
-
-			logger.debug("WriteConditionCodeTool#saveToStore 条件代码已保存到Store: functionName={}", code.getFunctionName());
-
-		} catch (Exception e) {
-			logger.error("WriteConditionCodeTool#saveToStore 保存失败", e);
-		}
-	}
+	private static final String WRITE_CONDITION_CODE_DESCRIPTION = """
+		为触发器注册一个条件检查函数。函数必须返回布尔值（True/False）。
+		
+		必需参数：
+		- functionName：函数名称（应以 'check_' 或 'condition_' 开头）
+		- code：返回 True 或 False 的完整 Python 函数代码
+		- parameters：参数名列表（可选，定时触发器可为空）
+		- description：描述该函数检查什么条件的自然语言描述
+		
+		条件函数编写规范：
+		1. 返回类型：
+		   - 必须返回 True 或 False（布尔值）
+		   - True 表示条件满足，触发器动作将执行
+		   - False 表示条件不满足，不执行动作
+		
+		2. 定时/延迟触发器：
+		   - 条件函数可以简单返回 True
+		   - 实际时间控制由 subscribe_trigger 的 delay/cron 参数控制
+		   - 示例：def check_reminder_condition(): return True
+		
+		3. 事件触发器：
+		   - 检查实际条件（如数据变化、阈值）
+		   - 示例：def check_quota_exceeded(current, limit): return current > limit
+		
+		4. 错误处理：
+		   - 发生任何错误时返回 False（故障安全）
+		   - 不要在条件函数中抛出异常
+		
+		示例：
+		
+		1. 定时触发器（始终为 True，通过 delay 控制时间）：
+		   write_condition_code(
+		       functionName='check_medicine_reminder',
+		       code='def check_medicine_reminder():\\n    return True',
+		       parameters=[],
+		       description='吃药提醒的定时条件'
+		   )
+		
+		2. 事件触发器（实际条件检查）：
+		   write_condition_code(
+		       functionName='check_is_working_day',
+		       code='def check_is_working_day(date):\\n    return date.weekday() < 5',
+		       parameters=['date'],
+		       description='检查给定日期是否为工作日'
+		   )
+		""";
 
 	/**
-	 * 创建 ToolCallback（供 CodeactSubAgentInterceptor 使用）
+	 * 创建 ToolCallback
 	 */
 	public static ToolCallback createWriteConditionCodeToolCallback(
-			BaseAgentTaskTool taskTool,
 			CodeContext codeContext,
 			RuntimeEnvironmentManager environmentManager) {
 
-		WriteConditionCodeTool tool = new WriteConditionCodeTool(taskTool, codeContext, environmentManager);
+		WriteConditionCodeTool tool = new WriteConditionCodeTool(codeContext, environmentManager);
 
 		return FunctionToolCallback.builder("write_condition_code", tool)
-				.description("Generate and register a condition check function for triggers. " +
-						"This function MUST return a boolean value (True/False). " +
-						"Example: write_condition_code(requirement='check if it is a working day', " +
-						"functionName='check_is_working_day', parameters=['date'])")
+				.description(WRITE_CONDITION_CODE_DESCRIPTION)
 				.inputType(Request.class)
 				.build();
 	}
 
 	public static ToolCallback createWriteConditionCodeToolCallback(
-			BaseAgentTaskTool taskTool,
 			CodeContext codeContext,
 			RuntimeEnvironmentManager environmentManager,
 			CodeFastIntentSupport codeFastIntentSupport) {
 
-		WriteConditionCodeTool tool = new WriteConditionCodeTool(taskTool, codeContext, environmentManager, codeFastIntentSupport);
+		WriteConditionCodeTool tool = new WriteConditionCodeTool(codeContext, environmentManager, codeFastIntentSupport);
 
 		return FunctionToolCallback.builder("write_condition_code", tool)
-				.description("Generate and register a condition check function for triggers. " +
-						"This function MUST return a boolean value (True/False). " +
-						"Example: write_condition_code(requirement='check if it is a working day', " +
-						"functionName='check_is_working_day', parameters=['date'])")
+				.description(WRITE_CONDITION_CODE_DESCRIPTION)
 				.inputType(Request.class)
 				.build();
 	}
@@ -315,24 +331,29 @@ public class WriteConditionCodeTool implements BiFunction<WriteConditionCodeTool
 	 */
 	public static class Request {
 		@JsonProperty(required = true)
-		@JsonPropertyDescription("Natural language description of the condition to check")
-		public String requirement;
-
-		@JsonProperty(required = true)
-		@JsonPropertyDescription("Function name for the condition check (should start with 'check_' or 'condition_')")
+		@JsonPropertyDescription("条件检查函数的名称（应以 'check_' 或 'condition_' 开头）")
 		public String functionName;
 
+		@JsonProperty(required = true)
+		@JsonPropertyDescription("定义条件函数的完整 Python 代码。必须返回 True 或 False。")
+		public String code;
+
 		@JsonProperty
-		@JsonPropertyDescription("List of parameter names the condition function needs")
+		@JsonPropertyDescription("条件函数需要的参数名列表")
 		public List<String> parameters;
+
+		@JsonProperty
+		@JsonPropertyDescription("描述该函数检查什么条件的自然语言描述")
+		public String description;
 
 		public Request() {
 		}
 
-		public Request(String requirement, String functionName, List<String> parameters) {
-			this.requirement = requirement;
+		public Request(String functionName, String code, List<String> parameters, String description) {
 			this.functionName = functionName;
+			this.code = code;
 			this.parameters = parameters;
+			this.description = description;
 		}
 	}
 }

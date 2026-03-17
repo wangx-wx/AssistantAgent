@@ -25,9 +25,9 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
 /**
- * React 阶段 Prompt 指导提供者
+ * Prompt 指导提供者
  *
- * <p>根据 React 阶段的评估结果生成 prompt 指导：
+ * <p>根据评估结果生成 prompt 指导：
  * <ul>
  *   <li>is_fuzzy=模糊：需要让用户明确需求</li>
  *   <li>is_fuzzy=清晰：按照用户的要求进行操作</li>
@@ -48,10 +48,10 @@ public class ReactPhasePromptGuidanceProvider extends EvaluationBasedPromptContr
     private static final Logger log = LoggerFactory.getLogger(ReactPhasePromptGuidanceProvider.class);
 
     private static final String CRITERION_IS_FUZZY = "is_fuzzy";
-    private static final String SUITE_ID = "react-phase-suite";
+    private static final String SUITE_ID = "default-suite";
 
     public ReactPhasePromptGuidanceProvider() {
-        super("ReactPhasePromptGuidanceProvider", SUITE_ID, 10);
+        super("PromptGuidanceProvider", SUITE_ID, 10);
     }
 
     @Override
@@ -65,10 +65,10 @@ public class ReactPhasePromptGuidanceProvider extends EvaluationBasedPromptContr
         Object isFuzzyValue = getCriterionValue(result, CRITERION_IS_FUZZY).orElse(null);
         String isFuzzy = isFuzzyValue != null ? isFuzzyValue.toString() : null;
 
-        log.info("ReactPhasePromptGuidanceProvider#generatePrompt - reason=生成React阶段指导, is_fuzzy={}", isFuzzy);
+        log.info("PromptGuidanceProvider#generatePrompt - reason=生成执行指导, is_fuzzy={}", isFuzzy);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("\n【React阶段执行指导】\n\n");
+        sb.append("\n【执行指导】\n\n");
 
         if ("模糊".equals(isFuzzy)) {
             sb.append("【模糊意图处理策略】\n");
@@ -89,7 +89,7 @@ public class ReactPhasePromptGuidanceProvider extends EvaluationBasedPromptContr
             return PromptContribution.empty();
         }
 
-        sb.append("\n【React阶段指导结束】\n");
+        sb.append("\n【执行指导结束】\n");
 
         // 由于当前 Hook 机制限制，无法通过 systemTextToAppend 修改 systemMessage
         // 改为使用 messagesToAppend，Hook 会将其转换为 AssistantMessage + ToolResponseMessage 注入

@@ -22,6 +22,7 @@ import com.alibaba.cloud.ai.graph.RunnableConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 
 import java.util.HashMap;
 import java.util.List;
@@ -54,13 +55,20 @@ public class CodeactEvaluationContextFactory {
 		Map<String, Object> executionResult = new HashMap<>();
 
 		// 提取用户输入 - 从 state 的 messages key 中获取
+		// 注意：由于其他 Hook（如 ReactExperienceAgentHook）可能已经向 messages 中注入了
+		// AssistantMessage 和 ToolResponseMessage，这里需要遍历查找最后一条 UserMessage
 		Optional<List<Message>> messagesOpt = state.value("messages");
 		if (messagesOpt.isPresent()) {
 			List<Message> messages = messagesOpt.get();
 			if (!messages.isEmpty()) {
-				// 取最后一条用户消息
-				Message lastMessage = messages.get(messages.size() - 1);
-				input.put(CodeactEvaluationTag.INPUT_USER_INPUT, lastMessage.getText());
+				// 遍历查找最后一条 UserMessage
+				String userInput = findLastUserInput(messages);
+				if (userInput != null) {
+					input.put(CodeactEvaluationTag.INPUT_USER_INPUT, userInput);
+					log.debug("CodeactEvaluationContextFactory#createInputRoutingContext - reason=找到用户输入, length={}", userInput.length());
+				} else {
+					log.warn("CodeactEvaluationContextFactory#createInputRoutingContext - reason=未找到UserMessage, messagesSize={}", messages.size());
+				}
 
 				// 会话历史
 				input.put(CodeactEvaluationTag.INPUT_CONVERSATION_HISTORY, messages);
@@ -104,7 +112,11 @@ public class CodeactEvaluationContextFactory {
 		if (messagesOpt.isPresent()) {
 			List<Message> messages = messagesOpt.get();
 			if (!messages.isEmpty()) {
-				input.put(CodeactEvaluationTag.INPUT_USER_INPUT, messages.get(messages.size() - 1).getText());
+				// 遍历查找最后一条 UserMessage
+				String userInput = findLastUserInput(messages);
+				if (userInput != null) {
+					input.put(CodeactEvaluationTag.INPUT_USER_INPUT, userInput);
+				}
 				input.put(CodeactEvaluationTag.INPUT_CONVERSATION_HISTORY, messages);
 			}
 		}
@@ -248,6 +260,26 @@ public class CodeactEvaluationContextFactory {
 		externalParamsOpt.ifPresent(params -> input.putAll(params));
 
 		return new EvaluationContext(input, executionResult);
+	}
+
+	/**
+	 * 从消息列表中查找最后一条 UserMessage 的内容
+	 *
+	 * <p>由于其他 Hook（如 ReactExperienceAgentHook）可能在 beforeAgent 阶段向 messages 中
+	 * 注入 AssistantMessage 和 ToolResponseMessage，直接取最后一条消息可能不是用户输入。
+	 * 此方法从后往前遍历，找到最后一条 UserMessage。
+	 *
+	 * @param messages 消息列表
+	 * @return 最后一条 UserMessage 的文本内容，如果没有找到则返回 null
+	 */
+	private String findLastUserInput(List<Message> messages) {
+		for (int i = messages.size() - 1; i >= 0; i--) {
+			Message message = messages.get(i);
+			if (message instanceof UserMessage) {
+				return message.getText();
+			}
+		}
+		return null;
 	}
 }
 

@@ -15,8 +15,6 @@
  */
 package com.alibaba.assistant.agent.extension.prompt;
 
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhases;
 import com.alibaba.assistant.agent.prompt.PromptContributorManager;
 
 /**
@@ -24,15 +22,11 @@ import com.alibaba.assistant.agent.prompt.PromptContributorManager;
  * 
  * <p>在 React Agent（主 Agent）的 BEFORE_MODEL 阶段执行，
  * 将 PromptContribution 注入到 messages。
- * 
- * <p>通过 {@code @HookPhases(AgentPhase.REACT)} 注解声明阶段，
- * 基类会自动从注解中读取阶段信息。
  *
  * @author Assistant Agent Team
  * @since 1.0.0
  * @see PromptContributorModelHook
  */
-@HookPhases(AgentPhase.REACT)
 public class ReactPromptContributorModelHook extends PromptContributorModelHook {
 
     public ReactPromptContributorModelHook(PromptContributorManager contributorManager) {

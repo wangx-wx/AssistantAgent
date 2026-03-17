@@ -43,6 +43,14 @@ public final class HookPriorityConstants {
     // ==================== beforeAgent 阶段 ====================
 
     /**
+     * CodeactTools 状态初始化 Hook 优先级
+     *
+     * <p>在 beforeAgent 阶段最先执行，将 CodeactToolRegistry 中的工具注入到 OverAllState
+     * <p>必须在所有其他 Hook 之前执行，确保后续 Hook 能读取到 codeact_tools
+     */
+    public static final int CODEACT_TOOLS_STATE_INIT_HOOK = 5;
+
+    /**
      * React 经验 Hook 优先级
      *
      * <p>在 beforeAgent 阶段最先执行，用于注入 React 行为策略经验

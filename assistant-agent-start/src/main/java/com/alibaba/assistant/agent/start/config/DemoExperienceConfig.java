@@ -29,7 +29,6 @@ import java.util.UUID;
  * <li>COMMON 经验：魔力红是研发助手，魔礼海是研发平台</li>
  * <li>REACT 经验：用户输入"你是谁"时不调用工具，先反问用户</li>
  * <li>REACT 经验：用户想计算"小明系数"时先写代码再反问乘方系数</li>
- * <li>CODE 经验：小明系数就是乘方，内部以乘方方式实现</li>
  * </ol>
  *
  * @author Assistant Agent Team
@@ -64,9 +63,6 @@ public class DemoExperienceConfig implements CommandLineRunner {
         // 初始化 React 经验
         initializeReactExperienceWhoAreYou();
         initializeReactExperienceXiaomingCoefficient();
-
-        // 初始化 Code 经验
-        initializeCodeExperienceXiaomingCoefficient();
 
         log.info("DemoExperienceConfig#run - reason=Demo Experiences initialization completed");
     }
@@ -192,9 +188,22 @@ public class DemoExperienceConfig implements CommandLineRunner {
         ExperienceArtifact.ToolCallSpec toolCall = new ExperienceArtifact.ToolCallSpec();
         toolCall.setToolName("write_code");
         toolCall.setArguments(Map.of(
-            "requirement", "计算小明系数（乘方运算），传入底数base和指数exponent，返回base的exponent次方",
             "functionName", "calculate_xiaoming_coefficient",
-            "parameters", List.of("base", "exponent")
+            "description", "计算小明系数（乘方运算），传入底数base和指数exponent，返回base的exponent次方",
+            "parameters", List.of("base", "exponent"),
+            "code", """
+                def calculate_xiaoming_coefficient(base, exponent):
+                    \"\"\"计算小明系数（乘方运算）
+                    
+                    Args:
+                        base: 底数
+                        exponent: 指数（乘方系数）
+                    
+                    Returns:
+                        base的exponent次方
+                    \"\"\"
+                    return base ** exponent
+                """
         ));
         plan.setToolCalls(List.of(toolCall));
         reactArtifact.setPlan(plan);
@@ -206,70 +215,6 @@ public class DemoExperienceConfig implements CommandLineRunner {
 
         experienceRepository.save(experience);
         log.info("DemoExperienceConfig#initializeReactExperienceXiaomingCoefficient - reason=Created xiaoming coefficient react experience with fast intent, id={}", experience.getId());
-    }
-
-    /**
-     * Code 经验：小明系数的代码实现
-     * <p>
-     * 只需配置 artifact.code，content 会通过 Experience.getEffectiveContent() 自动生成
-     * - 快速意图阶段：使用 artifact.code 跳过 LLM 代码生成
-     * - 评估/Prompt 注入阶段：使用 getEffectiveContent() 自动从 artifact.code 生成内容
-     */
-    private void initializeCodeExperienceXiaomingCoefficient() {
-        Experience experience = new Experience();
-        experience.setId("exp-code-xiaoming-" + UUID.randomUUID().toString().substring(0, 8));
-        experience.setType(ExperienceType.CODE);
-        experience.setTitle("小明系数代码实现");
-        // 不需要手动设置 content，会从 artifact.code 自动生成
-        experience.setScope(ExperienceScope.GLOBAL);
-        experience.setLanguage("python");
-        experience.setTags(Set.of("小明系数", "乘方", "代码", "python"));
-
-        // 配置快速意图
-        FastIntentConfig fastIntentConfig = new FastIntentConfig();
-        fastIntentConfig.setEnabled(true);
-        fastIntentConfig.setPriority(90);
-
-        // 匹配规则：通过 tool_arg_equals 匹配 functionName
-        FastIntentConfig.MatchExpression matchExpression = new FastIntentConfig.MatchExpression();
-        FastIntentConfig.Condition condition = new FastIntentConfig.Condition();
-        condition.setType("tool_arg_equals");
-        condition.setKey("functionName");
-        condition.setValue("calculate_xiaoming_coefficient");
-        matchExpression.setCondition(condition);
-        fastIntentConfig.setMatch(matchExpression);
-
-        experience.setFastIntentConfig(fastIntentConfig);
-
-        // 配置 artifact.code：这是唯一的代码数据源
-        ExperienceArtifact artifact = new ExperienceArtifact();
-        ExperienceArtifact.CodeArtifact code = new ExperienceArtifact.CodeArtifact();
-        code.setLanguage("python");
-        code.setFunctionName("calculate_xiaoming_coefficient");
-        code.setParameters(List.of("base", "exponent"));
-        code.setDescription("小明系数本质上就是乘方运算，使用 ** 运算符实现");
-        code.setCode(
-            "def calculate_xiaoming_coefficient(base: float, exponent: int) -> float:\n" +
-            "    \"\"\"\n" +
-            "    计算小明系数（乘方运算）\n" +
-            "    \n" +
-            "    Args:\n" +
-            "        base: 底数\n" +
-            "        exponent: 指数（乘方系数）\n" +
-            "    \n" +
-            "    Returns:\n" +
-            "        小明系数计算结果\n" +
-            "    \"\"\"\n" +
-            "    return base ** exponent\n"
-        );
-        artifact.setCode(code);
-        experience.setArtifact(artifact);
-
-        experience.setCreatedAt(Instant.now());
-        experience.setUpdatedAt(Instant.now());
-
-        experienceRepository.save(experience);
-        log.info("DemoExperienceConfig#initializeCodeExperienceXiaomingCoefficient - reason=Created xiaoming coefficient code experience with fast intent, id={}", experience.getId());
     }
 }
 

@@ -58,43 +58,43 @@ public class ExperienceRetrievalEvaluatorFactory {
     private static final Logger log = LoggerFactory.getLogger(ExperienceRetrievalEvaluatorFactory.class);
 
     /**
-     * 创建 React 阶段经验检索评估器
+     * 创建经验检索评估器
      * 检索 COMMON + REACT 类型的经验
      *
      * @param experienceProvider 经验提供者
      * @param maxExperiencesPerType 每种类型最多检索的数量
      * @return 规则评估器
      */
-    public static RuleBasedEvaluator createReactPhaseEvaluator(
+    public static RuleBasedEvaluator createExperienceEvaluator(
             ExperienceProvider experienceProvider,
             int maxExperiencesPerType) {
         return createEvaluator(
                 experienceProvider,
-                "react_experience_evaluator",
+                "experience-retrieval",
                 List.of(ExperienceType.COMMON, ExperienceType.REACT),
                 maxExperiencesPerType,
-                "React阶段"
+                "经验参考"
         );
     }
 
     /**
-     * 创建 CodeAct 阶段经验检索评估器
-     * 检索 COMMON + CODE 类型的经验
-     *
-     * @param experienceProvider 经验提供者
-     * @param maxExperiencesPerType 每种类型最多检索的数量
-     * @return 规则评估器
+     * @deprecated 不再区分阶段，使用 {@link #createExperienceEvaluator} 代替
      */
+    @Deprecated
+    public static RuleBasedEvaluator createReactPhaseEvaluator(
+            ExperienceProvider experienceProvider,
+            int maxExperiencesPerType) {
+        return createExperienceEvaluator(experienceProvider, maxExperiencesPerType);
+    }
+
+    /**
+     * @deprecated 已弃用
+     */
+    @Deprecated
     public static RuleBasedEvaluator createCodeActPhaseEvaluator(
             ExperienceProvider experienceProvider,
             int maxExperiencesPerType) {
-        return createEvaluator(
-                experienceProvider,
-                "codeact_experience_evaluator",
-                List.of(ExperienceType.COMMON, ExperienceType.CODE),
-                maxExperiencesPerType,
-                "CodeAct阶段"
-        );
+        return createExperienceEvaluator(experienceProvider, maxExperiencesPerType);
     }
 
     /**

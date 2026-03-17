@@ -16,10 +16,6 @@
 
 package com.alibaba.assistant.agent.extension.learning.hook;
 
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhases;
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhases;
 import com.alibaba.assistant.agent.core.observation.HookObservationHelper;
 import com.alibaba.assistant.agent.core.observation.ObservationState;
 import com.alibaba.assistant.agent.extension.learning.internal.DefaultLearningContext;
@@ -51,7 +47,6 @@ import java.util.concurrent.CompletableFuture;
  * @author Assistant Agent Team
  * @since 1.0.0
  */
-@HookPhases(AgentPhase.REACT)
 @HookPositions(HookPosition.AFTER_AGENT)
 public class AfterAgentLearningHook extends AgentHook {
 

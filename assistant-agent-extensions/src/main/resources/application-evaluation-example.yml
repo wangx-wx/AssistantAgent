@@ -19,7 +19,7 @@ spring:
             # 输入路由评估配置
             input-routing:
               enabled: true
-              suite-id: react-phase-suite
+              suite-id: default-suite
 
             # 代码生成输入评估配置（新增）
             code-generation-input:

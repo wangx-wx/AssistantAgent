@@ -15,8 +15,6 @@
  */
 package com.alibaba.assistant.agent.extension.prompt;
 
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhaseUtils;
 import com.alibaba.assistant.agent.prompt.PromptContribution;
 import com.alibaba.assistant.agent.prompt.PromptContributorContext;
 import com.alibaba.assistant.agent.prompt.PromptContributorManager;
@@ -43,13 +41,9 @@ import java.util.concurrent.CompletableFuture;
 /**
  * 将 PromptContributor 机制接入 ModelHook 的抽象基类
  * 在 BEFORE_MODEL 阶段执行，将 PromptContribution 注入到 messages
- * 
- * <p>子类只需使用 {@code @HookPhases} 注解指定适用的 Agent 阶段，
- * 基类会自动从注解中读取阶段信息。
  *
  * @author Assistant Agent Team
  * @see ReactPromptContributorModelHook
- * @see CodeactPromptContributorModelHook
  */
 @HookPositions(HookPosition.BEFORE_MODEL)
 public abstract class PromptContributorModelHook extends ModelHook implements Prioritized {
@@ -85,9 +79,7 @@ public abstract class PromptContributorModelHook extends ModelHook implements Pr
 
     @Override
     public String getName() {
-        AgentPhase[] phases = HookPhaseUtils.getHookPhases(this);
-        String phaseName = phases.length > 0 ? phases[0].name() : "UNKNOWN";
-        return "PromptContributorModelHook-" + phaseName;
+        return "PromptContributorModelHook";
     }
 
     @Override
@@ -101,14 +93,12 @@ public abstract class PromptContributorModelHook extends ModelHook implements Pr
         log.debug("{}#beforeModel - reason=开始执行 Prompt 贡献", hookName);
 
         try {
-            // 1. 构造上下文（从注解中获取阶段名称）
+            // 1. 构造上下文
             // 注意：systemMessage 传 null，因为框架中 AgentLlmNode 的 systemMessage 
             // 来自构建时的固定值 this.systemPrompt，不会存入 OverAllState，
             // 所以无法从 state 中获取。如需获取 systemMessage，应改用 ModelInterceptor。
-            AgentPhase[] phases = HookPhaseUtils.getHookPhases(this);
-            String phaseName = phases.length > 0 ? phases[0].name() : "REACT";
             PromptContributorContext context = new OverAllStatePromptContributorContext(
-                    state, null, phaseName);
+                    state, null, "REACT");
 
             // 2. 组装所有贡献
             PromptContribution contribution = contributorManager.assemble(context);

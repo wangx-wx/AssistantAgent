@@ -13,8 +13,6 @@ import com.alibaba.assistant.agent.extension.experience.spi.ExperienceProvider;
 import com.alibaba.cloud.ai.graph.KeyStrategy;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.RunnableConfig;
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhases;
 import com.alibaba.cloud.ai.graph.agent.Prioritized;
 import com.alibaba.cloud.ai.graph.agent.hook.AgentHook;
 import com.alibaba.cloud.ai.graph.agent.hook.HookPosition;
@@ -50,7 +48,6 @@ import java.util.concurrent.CompletableFuture;
  * <p>优先级：{@link HookPriorityConstants#FAST_INTENT_HOOK}（50），
  * 确保在评估 Hook 之前执行。
  */
-@HookPhases(AgentPhase.REACT)
 @HookPositions(HookPosition.BEFORE_AGENT)
 public class FastIntentReactHook extends AgentHook implements Prioritized {
 

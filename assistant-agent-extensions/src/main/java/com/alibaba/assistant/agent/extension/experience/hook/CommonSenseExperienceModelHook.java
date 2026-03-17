@@ -1,7 +1,5 @@
 package com.alibaba.assistant.agent.extension.experience.hook;
 
-import com.alibaba.assistant.agent.common.hook.AgentPhase;
-import com.alibaba.assistant.agent.common.hook.HookPhases;
 import com.alibaba.assistant.agent.extension.experience.config.ExperienceExtensionProperties;
 import com.alibaba.assistant.agent.extension.experience.model.Experience;
 import com.alibaba.assistant.agent.extension.experience.model.ExperienceQuery;
@@ -41,7 +39,6 @@ import java.util.concurrent.CompletableFuture;
  *
  * @author Assistant Agent Team
  */
-@HookPhases(AgentPhase.REACT)
 @HookPositions(HookPosition.BEFORE_MODEL)
 public class CommonSenseExperienceModelHook extends ModelHook {
 

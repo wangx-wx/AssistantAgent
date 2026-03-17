@@ -20,6 +20,8 @@ import java.util.Set;
  *
  * <p>Tests experience query functionality after application startup to ensure
  * experience hooks are working correctly.
+ * 
+ * <p>验证 COMMON 和 REACT 类型的经验。
  *
  * @author Assistant Agent Team
  * @since 1.0.0
@@ -43,10 +45,8 @@ public class ExperienceTestValidator implements CommandLineRunner {
     public void run(String... args) throws Exception {
         log.info("ExperienceTestValidator#run - reason=Starting experience module validation");
 
-
         testExperienceCount();
         testCommonExperienceQuery();
-        testCodeExperienceQuery();
         testReactExperienceQuery();
 
         log.info("ExperienceTestValidator#run - reason=Experience module validation completed");
@@ -54,12 +54,11 @@ public class ExperienceTestValidator implements CommandLineRunner {
 
     private void testExperienceCount() {
         long totalCount = experienceRepository.count();
-        long codeCount = experienceRepository.countByTypeAndScope(ExperienceType.CODE, null);
         long reactCount = experienceRepository.countByTypeAndScope(ExperienceType.REACT, null);
         long commonCount = experienceRepository.countByTypeAndScope(ExperienceType.COMMON, null);
 
-        log.info("ExperienceTestValidator#testExperienceCount - reason=Experience stats: total={}, code={}, react={}, common={}",
-                totalCount, codeCount, reactCount, commonCount);
+        log.info("ExperienceTestValidator#testExperienceCount - reason=Experience stats: total={}, react={}, common={}",
+                totalCount, reactCount, commonCount);
     }
 
     private void testCommonExperienceQuery() {
@@ -88,50 +87,23 @@ public class ExperienceTestValidator implements CommandLineRunner {
         }
     }
 
-    private void testCodeExperienceQuery() {
-        log.info("ExperienceTestValidator#testCodeExperienceQuery - reason=Testing code experience query (demo keyword)");
-
-        ExperienceQuery query = new ExperienceQuery(ExperienceType.CODE);
-        query.setLanguage("python");
-        query.setTags(Set.of("demo"));
-
-        ExperienceQueryContext context = new ExperienceQueryContext();
-        context.setLanguage("python");
-        context.setTaskType("code_generation");
-
-        List<Experience> experiences = experienceProvider.query(query, context);
-
-        log.info("ExperienceTestValidator#testCodeExperienceQuery - reason=Found {} demo code experiences", experiences.size());
-
-        boolean hasDemoExperience = experiences.stream()
-                .anyMatch(exp -> exp.getTags().contains("demo"));
-
-        if (hasDemoExperience) {
-            log.info("ExperienceTestValidator#testCodeExperienceQuery - reason=✅ Found demo code experience");
-            experiences.forEach(exp -> log.info("ExperienceTestValidator#testCodeExperienceQuery - reason=Demo experience: {}", exp.getTitle()));
-        } else {
-            log.warn("ExperienceTestValidator#testCodeExperienceQuery - reason=❌ Demo code experience not found");
-        }
-    }
-
     private void testReactExperienceQuery() {
         log.info("ExperienceTestValidator#testReactExperienceQuery - reason=Testing react experience query");
 
         ExperienceQuery query = new ExperienceQuery(ExperienceType.REACT);
         ExperienceQueryContext context = new ExperienceQueryContext();
-        context.setTaskType("code_execution");
 
         List<Experience> experiences = experienceProvider.query(query, context);
 
         log.info("ExperienceTestValidator#testReactExperienceQuery - reason=Found {} react experiences", experiences.size());
 
-        boolean hasAmbiguousStrategy = experiences.stream()
-                .anyMatch(exp -> exp.getTitle().contains("意图模糊"));
+        boolean hasWhoAreYou = experiences.stream()
+                .anyMatch(exp -> exp.getTitle().contains("身份询问响应策略"));
 
-        if (hasAmbiguousStrategy) {
-            log.info("ExperienceTestValidator#testReactExperienceQuery - reason=✅ Found ambiguous intent strategy");
+        if (hasWhoAreYou) {
+            log.info("ExperienceTestValidator#testReactExperienceQuery - reason=✅ Found who-are-you react experience");
         } else {
-            log.warn("ExperienceTestValidator#testReactExperienceQuery - reason=❌ Ambiguous intent strategy not found");
+            log.warn("ExperienceTestValidator#testReactExperienceQuery - reason=❌ Who-are-you react experience not found");
         }
     }
 }

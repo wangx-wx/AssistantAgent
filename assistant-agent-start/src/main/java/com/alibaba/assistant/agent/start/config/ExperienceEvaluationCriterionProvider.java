@@ -53,10 +53,10 @@ public class ExperienceEvaluationCriterionProvider implements EvaluationCriterio
     }
 
     @Override
-    public List<EvaluationCriterion> getReactPhaseCriteria() {
-        log.info("ExperienceEvaluationCriterionProvider#getReactPhaseCriteria - reason=提供 React 阶段评估 Criteria");
+    public List<EvaluationCriterion> getCriteria() {
+        log.info("ExperienceEvaluationCriterionProvider#getCriteria - reason=提供评估 Criteria");
 
-        // 1. 用户输入增强 Criterion（作为 react_experience_retrieval 的依赖）
+        // 1. 用户输入增强 Criterion（作为 experience_retrieval 的依赖）
         EvaluationCriterion enhancedUserInput = EvaluationCriterionBuilder
             .create("enhanced_user_input")
             .description("改写用户输入，使其更加清晰、完整")
@@ -100,78 +100,16 @@ public class ExperienceEvaluationCriterionProvider implements EvaluationCriterio
             .contextBindings("context.input.userInput")
             .build();
 
-        EvaluationCriterion reactExperienceRetrieval = EvaluationCriterionBuilder
-            .create("react_experience_retrieval")
-            .description("基于增强后的用户输入检索常识经验和React策略经验")
+        EvaluationCriterion experienceRetrieval = EvaluationCriterionBuilder
+            .create("experience_retrieval")
+            .description("基于增强后的用户输入检索相关经验")
             .resultType(ResultType.TEXT)
             .evaluatorType(EvaluatorType.RULE_BASED)
-            .evaluatorRef("react_experience_evaluator")
+            .evaluatorRef("experience-retrieval")
             .dependsOn("enhanced_user_input")
             .contextBindings("context.input.userInput")
             .build();
 
-        return List.of(enhancedUserInput, isFuzzy, reactExperienceRetrieval);
-    }
-
-    @Override
-    public List<EvaluationCriterion> getCodeActPhaseCriteria() {
-        log.info("ExperienceEvaluationCriterionProvider#getCodeActPhaseCriteria - reason=提供 CodeAct 阶段评估 Criteria");
-
-        // 1. 用户输入增强 Criterion（作为 codeact_experience_retrieval 的依赖）
-        EvaluationCriterion enhancedUserInput = EvaluationCriterionBuilder
-            .create("enhanced_user_input")
-            .description("改写用户输入，使其更加清晰、完整")
-            .resultType(ResultType.TEXT)
-            .workingMechanism(
-                "你是一个用户输入优化专家。请根据用户输入，改写并完善需求。" +
-                "改写要求：" +
-                "1. 补全隐含的约束条件" +
-                "2. 明确输入输出格式" +
-                "3. 保持原始意图不变" +
-                "4. 直接输出改写后的内容，不要添加任何解释"
-            )
-            .reasoningPolicy(ReasoningPolicy.NONE)
-            .evaluatorType(EvaluatorType.LLM_BASED)
-            .evaluatorRef("llm-based")
-            .contextBindings("context.input.userInput")
-            .build();
-
-        // 2. purpose 判断 Criterion
-        EvaluationCriterion purpose = EvaluationCriterionBuilder
-            .create("purpose")
-            .description("判断用户请求是咨询类还是操作类")
-            .resultType(ResultType.ENUM)
-            .options("咨询", "操作")
-            .workingMechanism(
-                "你是一个用户意图分类专家。请判断用户请求的类型。\n\n" +
-                "【咨询】的特征：\n" +
-                "- 用户想要查询、了解、获取某些信息\n" +
-                "- 不需要对系统进行修改\n" +
-                "- 只需要返回查询结果即可\n" +
-                "- 例如：'什么是XXX'、'查询XXX'、'帮我了解XXX'\n\n" +
-                "【操作】的特征：\n" +
-                "- 用户想要执行某个操作、修改某些内容\n" +
-                "- 涉及创建、修改、删除等操作\n" +
-                "- 可能会对系统产生影响\n" +
-                "- 例如：'帮我创建XXX'、'修改XXX'、'执行XXX'\n\n" +
-                "请直接输出'咨询'或'操作'，不要添加任何解释。"
-            )
-            .reasoningPolicy(ReasoningPolicy.NONE)
-            .evaluatorType(EvaluatorType.LLM_BASED)
-            .evaluatorRef("llm-based")
-            .contextBindings("context.input.userInput")
-            .build();
-
-        EvaluationCriterion codeactExperienceRetrieval = EvaluationCriterionBuilder
-            .create("codeact_experience_retrieval")
-            .description("基于增强后的用户输入检索常识经验和代码经验")
-            .resultType(ResultType.TEXT)
-            .evaluatorType(EvaluatorType.RULE_BASED)
-            .evaluatorRef("codeact_experience_evaluator")
-            .dependsOn("enhanced_user_input")
-            .contextBindings("context.input.userInput")
-            .build();
-
-        return List.of(enhancedUserInput, purpose, codeactExperienceRetrieval);
+        return List.of(enhancedUserInput, isFuzzy, experienceRetrieval);
     }
 }

@@ -20,8 +20,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 默认评估套件配置属性
  *
- * <p>控制 react-phase-suite 和 codeact-phase-suite 的行为。
- *
  * @author Assistant Agent Team
  * @since 1.0.0
  */
@@ -29,35 +27,35 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class DefaultEvaluationProperties {
 
     /**
-     * React 阶段评估配置
+     * 是否启用评估
      */
-    private PhaseConfig reactPhase = new PhaseConfig();
+    private boolean enabled = true;
 
     /**
-     * CodeAct 阶段评估配置
+     * 是否启用用户输入增强
      */
-    private PhaseConfig codeactPhase = new PhaseConfig();
-
-    public PhaseConfig getReactPhase() {
-        return reactPhase;
-    }
-
-    public void setReactPhase(PhaseConfig reactPhase) {
-        this.reactPhase = reactPhase;
-    }
-
-    public PhaseConfig getCodeactPhase() {
-        return codeactPhase;
-    }
-
-    public void setCodeactPhase(PhaseConfig codeactPhase) {
-        this.codeactPhase = codeactPhase;
-    }
+    private boolean enhancedUserInputEnabled = true;
 
     /**
      * 经验检索配置
      */
     private ExperienceRetrievalConfig experience = new ExperienceRetrievalConfig();
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnhancedUserInputEnabled() {
+        return enhancedUserInputEnabled;
+    }
+
+    public void setEnhancedUserInputEnabled(boolean enhancedUserInputEnabled) {
+        this.enhancedUserInputEnabled = enhancedUserInputEnabled;
+    }
 
     public ExperienceRetrievalConfig getExperience() {
         return experience;
@@ -68,23 +66,51 @@ public class DefaultEvaluationProperties {
     }
 
     /**
-     * 阶段评估配置
+     * @deprecated 不再区分阶段，使用 {@link #isEnabled()} 代替
      */
+    @Deprecated
+    public PhaseConfig getReactPhase() {
+        PhaseConfig config = new PhaseConfig();
+        config.setEnabled(this.enabled);
+        config.setEnhancedUserInputEnabled(this.enhancedUserInputEnabled);
+        return config;
+    }
+
+    /**
+     * @deprecated 不再区分阶段
+     */
+    @Deprecated
+    public void setReactPhase(PhaseConfig reactPhase) {
+        this.enabled = reactPhase.isEnabled();
+        this.enhancedUserInputEnabled = reactPhase.isEnhancedUserInputEnabled();
+    }
+
+    /**
+     * @deprecated 已弃用
+     */
+    @Deprecated
+    public PhaseConfig getCodeactPhase() {
+        PhaseConfig config = new PhaseConfig();
+        config.setEnabled(false);
+        return config;
+    }
+
+    /**
+     * @deprecated 已弃用
+     */
+    @Deprecated
+    public void setCodeactPhase(PhaseConfig codeactPhase) {
+        // no-op
+    }
+
+    /**
+     * @deprecated 不再区分阶段
+     */
+    @Deprecated
     public static class PhaseConfig {
 
-        /**
-         * 是否启用该阶段的评估
-         */
         private boolean enabled = true;
-
-        /**
-         * 是否启用用户输入增强（React阶段）
-         */
         private boolean enhancedUserInputEnabled = true;
-
-        /**
-         * 是否启用代码任务增强（CodeAct阶段）
-         */
         private boolean enhancedTaskInputEnabled = true;
 
         public boolean isEnabled() {
@@ -127,16 +153,6 @@ public class DefaultEvaluationProperties {
          */
         private int maxExperiencesPerType = 3;
 
-        /**
-         * React 阶段是否启用经验检索
-         */
-        private boolean reactPhaseEnabled = true;
-
-        /**
-         * CodeAct 阶段是否启用经验检索
-         */
-        private boolean codeactPhaseEnabled = true;
-
         public boolean isEnabled() {
             return enabled;
         }
@@ -151,22 +167,6 @@ public class DefaultEvaluationProperties {
 
         public void setMaxExperiencesPerType(int maxExperiencesPerType) {
             this.maxExperiencesPerType = maxExperiencesPerType;
-        }
-
-        public boolean isReactPhaseEnabled() {
-            return reactPhaseEnabled;
-        }
-
-        public void setReactPhaseEnabled(boolean reactPhaseEnabled) {
-            this.reactPhaseEnabled = reactPhaseEnabled;
-        }
-
-        public boolean isCodeactPhaseEnabled() {
-            return codeactPhaseEnabled;
-        }
-
-        public void setCodeactPhaseEnabled(boolean codeactPhaseEnabled) {
-            this.codeactPhaseEnabled = codeactPhaseEnabled;
         }
     }
 }
